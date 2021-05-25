@@ -1,17 +1,21 @@
-import 'package:covid_nepal/information.dart';
-import 'package:covid_nepal/nepalInfoPage.dart';
-import 'package:covid_nepal/secondScreen.dart';
+import 'package:covid_nepal/dependency_injector/dependency_injection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
+import 'view/Screen/information.dart';
+import 'view/Screen/nepalInfoPage.dart';
+import 'view/Screen/worldDataScreen.dart';
 
-void main() => runApp(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      // theme: ThemeData(brightness: Brightness.dark),
-      home: MainUi(),
-    ));
+void main() {
+  Injector.configure(Flavor.PROD);
+  runApp(MaterialApp(
+    debugShowCheckedModeBanner: false,
+    // theme: ThemeData(brightness: Brightness.dark),
+    home: MainUi(),
+  ));
+}
 
 class MainUi extends StatefulWidget {
   @override

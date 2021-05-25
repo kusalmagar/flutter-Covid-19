@@ -1,10 +1,13 @@
-import 'dart:async';
-import 'dart:convert';
+import 'package:covid_nepal/models/countries_data_model/countries_data.dart';
 
-import 'package:covid_nepal/API.dart';
+import 'package:covid_nepal/models/global_data_model/global_data.dart';
+import 'package:covid_nepal/presenter/countries_data_presenter.dart';
+import 'package:covid_nepal/presenter/global_data_presenter.dart';
+import 'package:covid_nepal/view/widgets/SearchBar.dart';
+import 'package:covid_nepal/view/widgets/showCasesData.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:http/http.dart' as http;
 
 void main() => runApp(
       MaterialApp(
@@ -18,51 +21,34 @@ class WorldData extends StatefulWidget {
   _WorldDataState createState() => _WorldDataState();
 }
 
-class _WorldDataState extends State<WorldData> {
-  bool isLoading = true;
-  Map globalData;
-  var totalCases;
-  var activeCases;
-  var totalDeaths;
-  var recovered;
-  var affectedCountries;
-  Future fetchGlobalData() async {
-    http.Response worldReponse = await http.get(worldURl);
-    if (worldReponse.statusCode == 200) {
-      globalData = jsonDecode(worldReponse.body);
-      totalCases = globalData['cases'];
-      activeCases = globalData['active'];
-      totalDeaths = globalData['deaths'];
-      recovered = globalData['recovered'];
-      affectedCountries = globalData['affectedCountries'];
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
+class _WorldDataState extends State<WorldData>
+    implements CountriesDataListViewContract, GlobalDataListViewContract {
+  bool _isGlobalDataLoading;
+  GlobalDataListPresenter _globalDataListPresenter;
+  List<GlobalData> _globalData;
+  GlobalData globalData;
+  bool _isCountryDataLoading;
+  CountriesDataListPresenter _countriesDataListPresenter;
+  List<CountriesData> _countriesData;
 
-  List countryList;
-  Future getCountryList() async {
-    http.Response worldReponse1 = await http.get(countryUrl);
-    if (worldReponse1.statusCode == 200) {
-      countryList = jsonDecode(worldReponse1.body);
-
-      setState(() {
-        isLoading = false;
-      });
-    }
+  _WorldDataState() {
+    _globalDataListPresenter = new GlobalDataListPresenter(this);
+    _countriesDataListPresenter = new CountriesDataListPresenter(this);
   }
 
   @override
   void initState() {
     super.initState();
-    fetchGlobalData();
-    getCountryList();
+
+    _isCountryDataLoading = true;
+    _isGlobalDataLoading = true;
+    _globalDataListPresenter.loadGlobalData();
+    _countriesDataListPresenter.loadCountryData();
   }
 
   Widget _bulidCountryList() {
     return Container(
-      height: 500,
+      height: MediaQuery.of(context).size.height / 2,
       padding: EdgeInsets.symmetric(vertical: 10.0),
       decoration: BoxDecoration(
         shape: BoxShape.rectangle,
@@ -77,123 +63,62 @@ class _WorldDataState extends State<WorldData> {
         ],
       ),
       child: ListView.builder(
-        itemCount: countryList == null ? 0 : countryList.length,
+        itemCount: _countriesData.length,
         itemBuilder: (BuildContext context, int index) {
           return Card(
+            color: Colors.green[900],
             elevation: 2,
             child: Padding(
-              padding: EdgeInsets.all(10.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: EdgeInsets.all(15.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Container(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Container(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                "${countryList[index]['country']}",
-                                style: TextStyle(
-                                    fontSize: 15.0,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              SizedBox(
-                                height: 25.0,
-                              ),
-                              // ),
-                              Text(
-                                "${countryList[index]['cases']}",
-                                style: TextStyle(
-                                    fontSize: 15.0, color: Colors.green),
-                              ),
-                              Text(
-                                "${countryList[index]['todayCases']}",
-                                style: TextStyle(
-                                    fontSize: 15.0, color: Colors.brown),
-                              ),
-                              Text(
-                                "${countryList[index]['active']}",
-                                style: TextStyle(
-                                    fontSize: 15.0, color: Colors.blue),
-                              ),
-                              Text(
-                                "${countryList[index]['critical']}",
-                                style: TextStyle(
-                                    fontSize: 15.0, color: Colors.indigo),
-                              ),
-                              Text(
-                                "${countryList[index]['deaths']}",
-                                style: TextStyle(
-                                    fontSize: 15.0, color: Colors.red),
-                              ),
-                              Text(
-                                "${countryList[index]['todayDeaths']}",
-                                style: TextStyle(
-                                    fontSize: 15.0,
-                                    color: Colors.pinkAccent[700]),
-                              ),
-                              Text(
-                                "${countryList[index]['recovered']}",
-                                style: TextStyle(
-                                    fontSize: 15.0, color: Colors.black),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                children: [
+                  countryInnfo(
+                    _countriesData[index].country,
+                    _countriesData[index].countryInfo.flag.toString(),
+                    Colors.white,
+                    FontWeight.bold,
                   ),
-                  Container(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Image.network(
-                          countryList[index]['countryInfo']['flag'],
-                          height: 30.0,
-                          width: 30.0,
-                        ),
-                        SizedBox(
-                          height: 10.0,
-                        ),
-                        Text(
-                          "Cases",
-                          style: TextStyle(fontSize: 15.0, color: Colors.green),
-                        ),
-                        Text(
-                          "New Cases",
-                          style: TextStyle(fontSize: 15.0, color: Colors.brown),
-                        ),
-                        Text(
-                          "Active Cases",
-                          style: TextStyle(fontSize: 15.0, color: Colors.blue),
-                        ),
-                        Text(
-                          "Serious Cases",
-                          style:
-                              TextStyle(fontSize: 15.0, color: Colors.indigo),
-                        ),
-                        Text(
-                          "Deaths",
-                          style: TextStyle(fontSize: 15.0, color: Colors.red),
-                        ),
-                        Text(
-                          "New Deaths",
-                          style: TextStyle(
-                              fontSize: 15.0, color: Colors.pinkAccent[700]),
-                        ),
-                        Text(
-                          "Recovered",
-                          style: TextStyle(fontSize: 15.0, color: Colors.black),
-                        ),
-                      ],
-                    ),
+                  showCasesData(
+                    "Cases",
+                    _countriesData[index].cases.toString(),
+                    Colors.white,
+                  ),
+                  showCasesData(
+                    "New Cases",
+                    _countriesData[index].todayCases.toString(),
+                    Colors.white,
+                  ),
+                  showCasesData(
+                    "Active Cases",
+                    _countriesData[index].active.toString(),
+                    Colors.white,
+                  ),
+                  showCasesData(
+                    "Deaths",
+                    _countriesData[index].deaths.toString(),
+                    Colors.white,
+                  ),
+                  showCasesData(
+                    "New Deaths",
+                    _countriesData[index].todayDeaths.toString(),
+                    Colors.white,
+                  ),
+                  showCasesData(
+                    "Critical",
+                    _countriesData[index].critical.toString(),
+                    Colors.white,
+                  ),
+                  showCasesData(
+                    "Recovered",
+                    _countriesData[index].recovered.toString(),
+                    Colors.white,
+                  ),
+                  showCasesData(
+                    "Today Recovered",
+                    _countriesData[index].todayRecovered.toString(),
+                    Colors.white,
                   ),
                 ],
               ),
@@ -280,7 +205,7 @@ class _WorldDataState extends State<WorldData> {
                                     width: 5.0,
                                   ),
                                   Text(
-                                    totalCases.toString(),
+                                    globalData.cases.toString(),
                                     style: TextStyle(
                                       fontFamily: 'Ubuntu',
                                       fontSize: 15.0,
@@ -336,7 +261,7 @@ class _WorldDataState extends State<WorldData> {
                                     width: 5.0,
                                   ),
                                   Text(
-                                    totalDeaths.toString(),
+                                    globalData.deaths.toString(),
                                     style: TextStyle(
                                       fontFamily: 'Ubuntu',
                                       fontSize: 15.0,
@@ -403,7 +328,7 @@ class _WorldDataState extends State<WorldData> {
                                     width: 5.0,
                                   ),
                                   Text(
-                                    activeCases.toString(),
+                                    globalData.active.toString(),
                                     style: TextStyle(
                                       fontFamily: 'Ubuntu',
                                       fontSize: 15.0,
@@ -459,7 +384,7 @@ class _WorldDataState extends State<WorldData> {
                                     width: 5.0,
                                   ),
                                   Text(
-                                    recovered.toString(),
+                                    globalData.recovered.toString(),
                                     style: TextStyle(
                                       fontFamily: 'Ubuntu',
                                       fontSize: 15.0,
@@ -529,7 +454,7 @@ class _WorldDataState extends State<WorldData> {
                         height: 5.0,
                       ),
                       Text(
-                        affectedCountries.toString(),
+                        globalData.affectedCountries.toString(),
                         style: TextStyle(
                             fontFamily: 'Montserrat',
                             fontSize: 15.0,
@@ -555,44 +480,109 @@ class _WorldDataState extends State<WorldData> {
     return Scaffold(
       body: Stack(
         children: <Widget>[
+          Container(
+            height: MediaQuery.of(context).size.height,
+            width: MediaQuery.of(context).size.width,
+          ),
           SizedBox(
             height: 15.0,
           ),
-          isLoading
-              ? Center(
-                  child: CircularProgressIndicator(
-                    backgroundColor: Colors.deepPurple[700],
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            child: SingleChildScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              // mainAxisAlignment: MainAxisAlignment.start,
+              // crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  _isGlobalDataLoading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            backgroundColor: Colors.deepPurple[700],
+                          ),
+                        )
+                      : Column(
+                          children: [
+                            _isCountryDataLoading
+                                ? Center(
+                                    child: CircularProgressIndicator(
+                                      backgroundColor: Colors.deepPurple[700],
+                                    ),
+                                  )
+                                : SearchBar(
+                                    countryDetails: _countriesData,
+                                  ),
+                            _buildWorldData(),
+                            SizedBox(
+                              height: 10.0,
+                            ),
+                            _buildAffectedCountries(),
+                          ],
+                        ),
+                  SizedBox(
+                    height: 10.0,
                   ),
-                )
-              : Container(
-                  height: double.infinity,
-                  width: double.infinity,
-                  child: SingleChildScrollView(
-                    physics: AlwaysScrollableScrollPhysics(),
-                    // mainAxisAlignment: MainAxisAlignment.start,
-                    // crossAxisAlignment: CrossAxisAlignment.start,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: <Widget>[
-                        _buildWorldData(),
-                        SizedBox(
-                          height: 10.0,
-                        ),
-                        _buildAffectedCountries(),
-                        SizedBox(
-                          height: 10.0,
-                        ),
-                        _bulidCountryList(),
-                        SizedBox(
-                          height: 10,
-                        ),
-                      ],
-                    ),
+                  _isCountryDataLoading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            backgroundColor: Colors.deepPurple[700],
+                          ),
+                        )
+                      : _bulidCountryList(),
+                  SizedBox(
+                    height: 10,
                   ),
-                )
+                ],
+              ),
+            ),
+          )
         ],
       ),
     );
+  }
+
+  @override
+  void onCountriesDataComplete(List<CountriesData> items) {
+    setState(() {
+      _countriesData = items;
+      if (_countriesData.isNotEmpty) {
+        _isCountryDataLoading = false;
+      } else {
+        _isCountryDataLoading = true;
+      }
+    });
+  }
+
+  @override
+  void onCountriesDataError() {
+    setState(() {
+      _isCountryDataLoading = true;
+      print("unable to fetch country data");
+    });
+  }
+
+  @override
+  void onGlobalDataComplete(List<GlobalData> items) {
+    setState(() {
+      _globalData = items;
+      if (_globalData.isNotEmpty) {
+        globalData = _globalData[0];
+        _isGlobalDataLoading = false;
+      } else {
+        globalData = _globalData[0];
+        _isGlobalDataLoading = true;
+      }
+    });
+  }
+
+  @override
+  void onGlobalDataLoadError() {
+    setState(() {
+      _isGlobalDataLoading = true;
+      print("unable to fetch global data");
+    });
   }
 }

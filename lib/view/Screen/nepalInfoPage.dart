@@ -1,9 +1,8 @@
-import 'dart:convert';
 import 'dart:async';
-import 'package:covid_nepal/API.dart';
+import 'package:covid_nepal/models/country_cases_data/country_cases_data.dart';
+import 'package:covid_nepal/presenter/country_cases_data_presenter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() => runApp(MaterialApp(
@@ -16,43 +15,21 @@ class CovidNepal extends StatefulWidget {
   _CovidNepalState createState() => _CovidNepalState();
 }
 
-class _CovidNepalState extends State<CovidNepal> {
+class _CovidNepalState extends State<CovidNepal>
+    implements CountryCasesDataListViewContract {
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       new FlutterLocalNotificationsPlugin();
   var initializationSettingsAndroid;
   var initializationSettingsIOS;
   var initializationSettings;
 
-  bool isLoading = true;
-  Map nepaldata;
-  var nepalName;
-  var nepalTotalCases;
-  var nepalNewCases;
-  var nepalActiveCases;
-  var nepalTotalDeaths;
-  var nepalNewDeaths;
-  var nepalTotalRecovered;
-  var nepalTotalSerious;
-  Future getNepalData() async {
-    http.Response nepalResponse = await http.get(nepal);
-    if (nepalResponse.statusCode == 200) {
-      nepaldata = jsonDecode(nepalResponse.body);
-      nepalName = nepaldata['country'].toString();
-      nepalTotalCases = nepaldata['cases'].toString();
-      nepalActiveCases = nepaldata['active'].toString();
-      nepalNewCases = nepaldata['todayCases'].toString();
-      nepalTotalDeaths = nepaldata['deaths'].toString();
-      nepalNewDeaths = nepaldata['todayDeaths'].toString();
-      nepalTotalRecovered = nepaldata['recovered'].toString();
-      nepalTotalSerious = nepaldata['critical'].toString();
+  bool _isLoading;
+  CountryCasesDataListPresenter _countryDataListPresenter;
+  List<CountryCasesData> _nepalData;
+  CountryCasesData nepalData;
 
-      setState(() {
-        isLoading = false;
-      });
-    } else {
-      _showDialog();
-    }
-    _showNotification();
+  _CovidNepalState() {
+    _countryDataListPresenter = new CountryCasesDataListPresenter(this);
   }
 
   void _showDialog() {
@@ -63,7 +40,7 @@ class _CovidNepalState extends State<CovidNepal> {
             title: new Text("Server Error"),
             content: new Text("Connection to server failed"),
             actions: <Widget>[
-              new FlatButton(
+              new TextButton(
                 child: new Text("OK"),
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -75,11 +52,11 @@ class _CovidNepalState extends State<CovidNepal> {
   }
 
   void _showNotification() async {
-    if (nepalNewCases == "0") {
+    if (nepalData.todayCases.toString() == "0") {
       print("No new cases");
     } else {
       await _demoNotification();
-      print(nepalNewCases);
+      print(nepalData.todayCases.toString());
     }
   }
 
@@ -92,15 +69,20 @@ class _CovidNepalState extends State<CovidNepal> {
       importance: Importance.Max,
       priority: Priority.High,
       ticker: 'test ticker',
+      // ledColor: Colors.red,
     );
-    var ioschannelSpecifics = IOSNotificationDetails();
+    var ioschannelSpecifics = IOSNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
     var plarformChannelSpecifics = NotificationDetails(
         androidPlatformChannelSpecifics, ioschannelSpecifics);
     //Shows a notification periodically with a specified interval
     await flutterLocalNotificationsPlugin.schedule(
         0,
         "New Cases",
-        "$nepalNewCases New cases was found".toString(),
+        "${nepalData.todayCases} New cases was found".toString(),
         scheduleNotificationDateTime,
         plarformChannelSpecifics,
         payload: 'Notification was tapped');
@@ -109,8 +91,8 @@ class _CovidNepalState extends State<CovidNepal> {
   @override
   void initState() {
     super.initState();
-    // getCovidData();
-    getNepalData();
+    _isLoading = true;
+    _countryDataListPresenter.loadServerResponse("Nepal");
     initializationSettingsAndroid =
         new AndroidInitializationSettings('app_icon');
     initializationSettingsIOS = new IOSInitializationSettings(
@@ -154,7 +136,7 @@ class _CovidNepalState extends State<CovidNepal> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            nepalName.toString(),
+            nepalData.country.toString(),
             style: TextStyle(
                 fontFamily: 'Montserrat',
                 color: Colors.black,
@@ -196,7 +178,7 @@ class _CovidNepalState extends State<CovidNepal> {
                             color: Colors.blue),
                       ),
                       Text(
-                        nepalTotalCases.toString(),
+                        nepalData.cases.toString(),
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15.0,
@@ -235,7 +217,7 @@ class _CovidNepalState extends State<CovidNepal> {
                             color: Colors.blue),
                       ),
                       Text(
-                        nepalActiveCases.toString(),
+                        nepalData.activeCases.toString(),
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15.0,
@@ -274,7 +256,7 @@ class _CovidNepalState extends State<CovidNepal> {
                             color: Colors.blue),
                       ),
                       Text(
-                        nepalNewCases.toString(),
+                        nepalData.todayCases.toString(),
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15.0,
@@ -313,7 +295,7 @@ class _CovidNepalState extends State<CovidNepal> {
                             color: Colors.blue),
                       ),
                       Text(
-                        nepalTotalDeaths.toString(),
+                        nepalData.deaths.toString(),
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15.0,
@@ -352,7 +334,7 @@ class _CovidNepalState extends State<CovidNepal> {
                             color: Colors.blue),
                       ),
                       Text(
-                        nepalNewDeaths.toString(),
+                        nepalData.todayDeaths.toString(),
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15.0,
@@ -391,7 +373,7 @@ class _CovidNepalState extends State<CovidNepal> {
                             color: Colors.blue),
                       ),
                       Text(
-                        nepalTotalRecovered.toString(),
+                        nepalData.recovered.toString(),
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15.0,
@@ -430,7 +412,7 @@ class _CovidNepalState extends State<CovidNepal> {
                             color: Colors.blue),
                       ),
                       Text(
-                        nepalTotalSerious.toString(),
+                        nepalData.critical.toString(),
                         style: TextStyle(
                           fontFamily: 'Montserrat',
                           fontSize: 15.0,
@@ -551,11 +533,7 @@ class _CovidNepalState extends State<CovidNepal> {
                         gradient: LinearGradient(
                           begin: Alignment.topRight,
                           end: Alignment.bottomLeft,
-                          colors: [
-                            // Color(0x1D14C6),
-                            // Color(0xFF1129F),
-                            Colors.black, Colors.deepPurple[300]
-                          ],
+                          colors: [Colors.black, Colors.deepPurple[300]],
                         ),
                       ),
                       child: Column(
@@ -595,7 +573,7 @@ class _CovidNepalState extends State<CovidNepal> {
                       ),
                     ),
                   ),
-                  isLoading
+                  _isLoading
                       ? Center(
                           child: CircularProgressIndicator(
                             backgroundColor: Colors.deepPurple[700],
@@ -613,6 +591,25 @@ class _CovidNepalState extends State<CovidNepal> {
         ],
       ),
     );
+  }
+
+  @override
+  void onCountryCasesDataComplete(List<CountryCasesData> items) {
+    setState(() {
+      _nepalData = items;
+      nepalData = _nepalData[0];
+      _isLoading = false;
+      _showNotification();
+    });
+  }
+
+  @override
+  void onCountryCasesDataError() {
+    setState(() {
+      _isLoading = true;
+      _showDialog();
+      print("unable to fetch data");
+    });
   }
 }
 
